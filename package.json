@@ -1,0 +1,27 @@
+{
+  "name": "hashed-timelock-contract-dapp",
+  "version": "0.0.1",
+  "description": "A dAPP for Hashed Timelock Contract",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "ganache-start": "ganache-cli --port 7545",
+    "test": "truffle test"
+  },
+  "repository": "https://github.com/waihocheung/hashed-timelock-contract-dapp",
+  "author": "Waiho Cheung",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/waihocheung/hashed-timelock-contract-dapp/issues"
+  },
+  "homepage": "https://github.com/waihocheung/hashed-timelock-contract-dapp#readme",
+  "dependencies": {
+    "openzeppelin-solidity": "^4.5.0"
+  },
+  "devDependencies": {
+    "ganache-cli": "^6.12.2",
+    "truffle": "^5.5.4"
+  }
+}
