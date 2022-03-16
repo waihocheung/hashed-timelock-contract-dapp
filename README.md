@@ -25,6 +25,6 @@ A dAPP for hashed timelock contract
 ![](docs/htlc-workflow.png)
 
 ## TODOs
-- Complete the web page. The web page now shows the HTLC design workflow. Add components/functions to implement atomic swap between tokens with HTLC
-- Improve unit test coverage
+- Add components/functions to implement atomic swap between tokens with HTLC to the web page/app. It only shows the HTLC workflow design diagram for now. 
+- Improve unit test coverage.
 - Add support for more token standard, e.g. ERC721.
