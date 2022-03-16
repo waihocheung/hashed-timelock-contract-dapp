@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.22 <0.9.0;
 
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+
 /**
- * Hashed Timelock Contract for ETH
+ * Hashed Timelock Contract for ERC20
  */
-contract HashedTimeLockETH {
+contract HashedTimeLockERC20 {
 
     event HTLCCreate(
         bytes32 indexed contractId,
         address indexed sender,
         address indexed receiver,
+        address token,
         uint256 amount,
         bytes32 hashlock,
         uint256 timelock
@@ -18,8 +21,9 @@ contract HashedTimeLockETH {
     event HTLCRefund(bytes32 indexed contractId);
 
     struct ContractDetails {
-        address payable sender;
-        address payable receiver;
+        address sender;
+        address receiver;
+        address token;
         uint256 amount;
         bytes32 hashlock;
         uint256 timelock;
@@ -30,11 +34,15 @@ contract HashedTimeLockETH {
 
     mapping (bytes32 => ContractDetails) contracts;
 
-    modifier validFunds() {
-        require(msg.value > 0, "funds must be > 0");
+    modifier tokensTransferable(address _token, address _sender, uint256 _amount) {
+        require(_amount > 0, "token amount must be > 0");
+        require(
+            ERC20(_token).allowance(_sender, address(this)) >= _amount,
+            "acoumt exceeds token allowance"
+        );
         _;
     }
-    modifier futureTimelock(uint256 _time) {
+    modifier futureTimelock(uint _time) {
         require(_time > block.timestamp, "timelock time must be in the future");
         _;
     }
@@ -73,10 +81,10 @@ contract HashedTimeLockETH {
      *                  Refunds can be made after this time.
      * @return contractId Id of the new HTLC.
      */
-    function createContract(address payable _receiver, bytes32 _hashlock, uint256 _timelock)
+    function createContract(address payable _receiver, bytes32 _hashlock, uint256 _timelock, address _token, uint256 _amount)
         external
         payable
-        validFunds
+        tokensTransferable(_token, msg.sender, _amount)
         futureTimelock(_timelock)
         returns (bytes32 contractId)
     {
@@ -93,9 +101,14 @@ contract HashedTimeLockETH {
         if (haveContract(contractId))
             revert("Contract already exists");
 
+        // Sender puts an _amount of token to this contract which becomes the temporary owner of the tokens
+        if (!ERC20(_token).transferFrom(msg.sender, address(this), _amount))
+            revert("transferFrom sender to this failed");
+
         contracts[contractId] = ContractDetails(
             payable(msg.sender),
             _receiver,
+            _token,
             msg.value,
             _hashlock,
             _timelock,
@@ -108,6 +121,7 @@ contract HashedTimeLockETH {
             contractId,
             msg.sender,
             _receiver,
+            _token,
             msg.value,
             _hashlock,
             _timelock
@@ -132,7 +146,7 @@ contract HashedTimeLockETH {
         ContractDetails storage c = contracts[_contractId];
         c.secret = _secret;
         c.withdrawn = true;
-        c.receiver.transfer(c.amount);
+        ERC20(c.token).transfer(c.receiver, c.amount);
         emit HTLCWithdraw(_contractId);
         return true;
     }
@@ -152,7 +166,7 @@ contract HashedTimeLockETH {
     {
         ContractDetails storage c = contracts[_contractId];
         c.refunded = true;
-        c.sender.transfer(c.amount);
+        ERC20(c.token).transfer(c.sender, c.amount);
         emit HTLCRefund(_contractId);
         return true;
     }
@@ -167,6 +181,7 @@ contract HashedTimeLockETH {
         returns (
             address sender,
             address receiver,
+            address token,
             uint amount,
             bytes32 hashlock,
             uint timelock,
@@ -176,12 +191,13 @@ contract HashedTimeLockETH {
         )
     {
         if (!haveContract(_contractId))
-            return (address(0), address(0), 0, 0, 0, false, false, 0);
+            return (address(0), address(0), address(0), 0, 0, 0, false, false, 0);
 
         ContractDetails storage c = contracts[_contractId];
         return (
             c.sender,
             c.receiver,
+            c.token,
             c.amount,
             c.hashlock,
             c.timelock,
